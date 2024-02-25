@@ -1,0 +1,138 @@
+---
+title: "biostats_hw2"
+output: github_document
+date: "2023-10-06"
+---
+
+```{r}
+library(tidyverse)
+```
+
+
+# Problem 1 
+Suppose the probability of having at least one dental checkup during a two-year period is
+73%. 56 random individuals are being studied for their health care utilization practices over a
+two-year period. Compute “part a” by hand and show key steps. For all other parts you may
+hand calculate or use R.
+a) What is the probability that exactly 40 of these individuals will have at least one dental
+checkup?
+b) What is the probability that at least 40 of these individuals will have at least one dental
+checkup?
+
+## Part a
+```{r}
+exactly_40 = dbinom(40, 56, 0.73)
+exactly_40
+```
+## Part b
+```{r}
+at_least_40 = 1 - pbinom(39, 56, 0.73)
+at_least_40
+```
+
+
+# Problem 2
+Suppose the number of tornadoes in the United States follows a Poisson distribution with
+parameter 𝜆 = 6 tornadoes per year. Compute using tables or R. Show the formula for “part
+a” (it can be handwritten and embedded in the pdf file).
+a) What is the probability of having fewer than 3 tornadoes in the United States next year?
+b) What is the probability of having exactly 3 tornadoes in the United States next year?
+c) What is the probability of having more than 3 tornadoes in the United States next year?
+
+## Part a
+```{r}
+fewer_than_3 = ppois(3, 6)
+fewer_than_3
+```
+## Part b
+```{r}
+exactly_3 = dpois(3, 6)
+exactly_3
+```
+## Part c
+```{r}
+more_than_3 = 1 - ppois(3, 6)
+more_than_3
+```
+
+
+# Problem 3
+Assume the systolic blood pressure of 20-29 year old American males is normally distributed
+with population mean 128.0 and population standard deviation 10.2.
+a) What is the probability that a randomly selected American male between 20 and 29
+years old has a systolic blood pressure above 137.0?
+b) What is the probability that the sample mean for blood pressure of 50 males between 20
+and 29 years old will be less than 125.0?
+c) What is the 90th percentile of the sampling distribution of the sample mean X for a
+sample size of 40?
+
+```{r}
+mu = 128
+sigma2 = 10.2
+N = 10
+
+set.seed(4)
+  norm.df = tibble(
+    sample = rnorm(N, mu, sigma2),
+    id     = "Original Normal Distribution"
+  )
+  
+norm.df |> 
+    ggplot(aes(x = sample, y = ..density.., fill = id)) +
+    geom_histogram(binwidth = 6, colour = "black", alpha = 0.1) +
+    geom_density(alpha = 0.4) +
+    labs(
+      x = sprintf("Xi ~ N(%e, %f)", mu, sigma2),
+      y = "Systolic Blood Pressure",
+      title = "Histogram and Density Curve for Systolic Blood Pressure for 
+      American Males 20 to 29 years old") +
+ scale_fill_viridis_d("") +
+theme_classic() +
+theme(legend.position = "none")
+```
+## Part a
+```{r}
+bp_above_137 = 1-pnorm(137, 128, 10.2)
+bp_above_137
+```
+## Part b
+```{r}
+sd = 10.2/(sqrt(50))
+bp_under_125 = pnorm(125, 128, sd)
+bp_under_125
+```
+## Part c
+```{r}
+std = 10.2/(sqrt(40))
+c_90 = qnorm(.9, 128, std)
+c_90
+```
+
+
+# Problem 4
+Some researchers are interested in the mean pulse of young women suffering from fibromyalgia.
+They selected a random sample of 40 young females suffering from fibromyalgia. The sample
+mean of their pulses was 80 and the sample standard deviation was 10.
+a) Compute the 95% confidence interval for the population mean pulse rate of young females
+suffering from fibromyalgia.
+c) Suppose the researchers now want to test the null hypothesis that the mean pulse of
+young women suffering from fibromyalgia is equal to 70, against the alternative that the
+mean pulse is not equal to 70, at the 𝛼 = 0.01 significance level. Conduct this hypothesis
+test, and interpret the results.
+
+## Part a
+```{r}
+lower = 80 - 2.021 * 10/sqrt(40)
+upper = 80 + 2.021 * 10/sqrt(40)
+CI = c(lower, upper)
+CI
+```
+## Part c
+```{r}
+tstat = (80 - 70) / (10/sqrt(40))
+tstat
+```
+
+
+  
+  

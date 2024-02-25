@@ -1,0 +1,474 @@
+---
+title: "biostats_hw5"
+date: "2023-12-15"
+output: github_document
+---
+
+
+```{r}
+library(ggplot2)
+library(corrplot)
+library(faraway)
+library(glmnet)
+library(tidyverse)
+library(leaps)
+library(caret)
+```
+
+## Problem 1
+R dataset state.x77 from library(faraway) contains information on 50 states from 1970s
+collected by US Census Bureau. The goal is to predict ‘life expectancy’ using a combination
+of remaining variables.
+a) Provide descriptive statistics for all variables of interest (continuous and categorical) –
+no test required.
+b) Examine exploratory plots, e.g., scatter plots, histograms, box-plots to get a sense of
+the data and possible variable transformations. (Be selective! Even if you create 20
+plots, you don’t want to show them all). If you find a transformation to be necessary or
+recommended, perform the transformation and use it through the rest of the problem.
+c) Use automatic procedures to find a ‘best subset’ of the full model. Present the results
+and comment on the following:
+• Do the procedures generate the same model?
+• Are any variables a close call? What was your decision: keep or discard? Provide
+arguments for your choice. (Note: this question might have more or less relevance
+depending on the ‘subset’ you choose).
+• Is there any association between ‘Illiteracy’ and ‘HS graduation rate’? Does your ‘subset’
+contain both?
+d) Use criterion-based procedures to guide your selection of the ‘best subset’. Summarize
+your results (tabular or graphical).
+e) Use the LASSO method to perform variable selection. Make sure you choose the “best
+lambda” to use and show how you determined this.
+f) Compare the ‘subsets’ from parts c, d, and e and recommend a ‘final’ model. Using this
+‘final’ model do the following:
+• Check the model assumptions.
+• Test the model predictive ability using a 10-fold cross-validation.
+
+## Part a
+```{r}
+states = 
+  data.frame(state.x77) |> 
+  janitor::clean_names() |> 
+  mutate(log_population = log(population)) |> 
+  mutate(log_area = log(area)) 
+summary(state.x77)
+```
+
+## Part b
+```{r}
+ggplot(data = states, aes(x = income)) +
+  geom_histogram(binwidth = 600, fill = "blue", color = "black") +
+labs(title = "Income Distribution", x = "Income", y = "Frequency")
+
+stars(states, key.loc = c(16, 1.25), draw.segments = T)
+corrplot(cor(as.matrix(states)))
+```
+
+
+## Part c 
+
+# forward selection
+```{r}
+
+variables = c("log_population", "income", "illiteracy", "murder",
+               "hs_grad", "frost", "log_area")
+
+
+df_results1 = data.frame(variable = NA,
+                          estimate = NA,
+                          std.error = NA,
+                          statistic = NA,
+                          p.val = NA)
+
+
+for(var in variables){
+  fit = lm(states$`life_exp` ~ states[[var]])
+  fit_sum = summary(fit)
+  
+  temp_results = c(var, fit_sum$coefficients[2,])
+  
+  df_results1 = rbind(df_results1, temp_results)
+}
+
+
+
+
+df_results1 = df_results1[-1,] 
+
+df_results1 |>
+mutate(across(-variable, ~as.numeric(.))) |>
+arrange(p.val) |>
+gt() |>
+fmt_number(
+columns = 2:5,
+decimals = 4
+) |>
+tab_style(
+style = list(
+cell_fill(color = "lightcyan"),
+cell_text(weight = "bold")
+),
+locations = cells_body(
+columns = p.val, rows = p.val < 0.05
+))
+```
+
+These results show that the smallest variable p-value is murder. Thus, we will add murder to the model first. 
+
+```{r}
+
+variables = c("log_population", "income", "illiteracy",
+               "hs_grad", "frost", "log_area")
+
+df_results2 = data.frame(variable = NA,
+                          estimate = NA,
+                          std.error = NA,
+                          statistic = NA,
+                          p.val = NA)
+
+
+for(var in variables){
+  fit = lm(states$`life_exp` ~ states$murder + states[[var]])
+  fit_sum = summary(fit)
+  
+  temp_results = c(var, fit_sum$coefficients[3,])
+  
+  df_results2 = rbind(df_results2, temp_results)
+}
+
+df_results2 = df_results2[-1,]
+
+
+df_results2 |> 
+  mutate(across(-variable, ~as.numeric(.))) |> 
+  arrange(p.val) |> 
+  gt() |> 
+  fmt_number(
+    columns = 2:5,
+    decimals = 4
+  ) |> 
+  tab_style(
+    style = list(
+      cell_fill(color = "lightcyan"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(
+      columns = p.val,
+      rows = p.val < 0.05
+    )
+  )
+```
+
+These results show that the smallest variable p-value is hs_grad. Thus, we will add hs_grad to the model next.
+
+```{r}
+
+variables = c("log_population", "income", "illiteracy",
+               "frost", "log_area")
+
+df_results3 = data.frame(variable = NA,
+                          estimate = NA,
+                          std.error = NA,
+                          statistic = NA,
+                          p.val = NA)
+
+
+for(var in variables){
+  fit = lm(states$`life_exp` ~ states$murder + states$`hs_grad` + states[[var]])
+  fit_sum = summary(fit)
+  
+  temp_results = c(var, fit_sum$coefficients[4,])
+  
+  df_results3 = rbind(df_results3, temp_results)
+}
+
+df_results3 = df_results3[-1,] 
+
+
+df_results3 |> 
+  mutate(across(-variable, ~as.numeric(.))) |> 
+  arrange(p.val) |> 
+  gt() |> 
+  fmt_number(
+    columns = 2:5,
+    decimals = 4
+  ) |> 
+  tab_style(
+    style = list(
+      cell_fill(color = "lightcyan"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(
+      columns = p.val,
+      rows = p.val < 0.05
+    )
+  )
+```
+
+These results show that the smallest variable p-value is log_population. Thus, we will add log_population to the model next.
+
+```{r}
+
+variables = c("income", "illiteracy", "frost", "log_area")
+
+df_results4 = data.frame(variable = NA,
+                          estimate = NA,
+                          std.error = NA,
+                          statistic = NA,
+                          p.val = NA)
+
+
+for(var in variables){
+  fit = lm(states$`life_exp` ~ states$murder + states$`hs_grad` +
+              states$log_population + states[[var]])
+  fit_sum = summary(fit)
+  
+  temp_results = c(var, fit_sum$coefficients[5,])
+  
+  df_results4 = rbind(df_results4, temp_results)
+}
+
+df_results4 = df_results4[-1,]
+
+df_results4 |> 
+  mutate(across(-variable, ~as.numeric(.))) |> 
+  arrange(p.val) |> 
+  gt() |> 
+  fmt_number(
+    columns = 2:5,
+    decimals = 4
+  ) |> 
+  tab_style(
+    style = list(
+      cell_fill(color = "lightcyan"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(
+      columns = p.val,
+      rows = p.val < 0.05
+    )
+  )
+```
+
+These results show that the smallest variable p-value is frost. Thus, we will add frost to the model next.
+
+```{r}
+
+variables = c("income", "illiteracy", "log_area")
+
+df_results5 = data.frame(variable = NA,
+                          estimate = NA,
+                          std.error = NA,
+                          statistic = NA,
+                          p.val = NA)
+
+
+for(var in variables){
+  fit = lm(states$`life_exp` ~ states$murder + states$`hs_grad` +
+              states$log_population + states$frost + states[[var]])
+  fit_sum = summary(fit)
+  
+  temp_results = c(var, fit_sum$coefficients[6,])
+  
+  df_results5 = rbind(df_results5, temp_results)
+}
+
+df_results5 = df_results5[-1,] 
+
+
+df_results5 |> 
+  mutate(across(-variable, ~as.numeric(.))) |> 
+  arrange(p.val) |> 
+  gt() |> 
+  fmt_number(
+    columns = 2:5,
+    decimals = 4
+  ) |> 
+  tab_style(
+    style = list(
+      cell_fill(color = "lightcyan"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(
+      columns = p.val,
+      rows = p.val < 0.05
+    )
+  )
+```
+
+No more variables have a p-value below 0.05 so the process of forward selection is complete. 
+
+$$
+\widehat{\textrm{life_exp}} = \hat{\beta_0} + \hat{\beta_1} \cdot \textrm{murder} + \hat{\beta_2} \cdot \textrm{hs_grad} + \hat{\beta_3} \cdot \log \left(\textrm{population}\right) + \hat{\beta_4} \cdot \textrm{frost}
+$$
+
+# backward selection
+
+```{r}
+lm(`life_exp` ~ log_population + income + illiteracy + murder + `hs_grad` + 
+     frost + log_area, 
+   data = states) |> 
+  summary()
+```
+
+Fitting all of the variables shows that income has the largest p-value so we will remove it from the model first. 
+
+```{r}
+lm(`life_exp` ~ log_population + murder + `hs_grad` + frost + log_area, 
+   data = states) |> 
+  summary()
+```
+
+These results show illiteracy has the largest p-value so we will remove it from the model next. 
+
+```{r}
+lm(`life_exp` ~ log_population + murder + `hs_grad` + frost + log_area, 
+   data = states) |> 
+  summary()
+```
+
+These results show log_area has the largest p-value so we will remove it from the model next.
+
+```{r}
+lm(`life_exp` ~ log_population + murder + `hs_grad` + frost, 
+   data = states) |> 
+  summary()
+```
+
+These results show that all of the remaining variables have p-values below 0.05. Therefore, backwards selection is complete.
+
+$$
+\widehat{\textrm{Life Exp}} = \hat{\beta_0} + \hat{\beta_1} \cdot \textrm{Murder} + \hat{\beta_2} \cdot \textrm{HS Grad} + \hat{\beta_3} \cdot \log \left(\textrm{Population}\right) + \hat{\beta_4} \cdot \textrm{Frost}
+$$
+# stepwise selection 
+
+```{r}
+step(
+ lm(`life_exp` ~ log_population + income + illiteracy + murder + `hs_grad` + 
+     frost + log_area, 
+   data = states),
+ direction = "both"
+)
+```
+
+$$
+\widehat{\textrm{Life Exp}} = \hat{\beta_0} + \hat{\beta_1} \cdot \textrm{Murder} + \hat{\beta_2} \cdot \textrm{HS Grad} + \hat{\beta_3} \cdot \log \left(\textrm{Population}\right) + \hat{\beta_4} \cdot \textrm{Frost}
+$$
+All of the proposed models provided the same model. The p-value for the frost variable was very close to 0.05. Therefore, the relationship between life_exp and frost might be weak. The correlation between illiteracy and hs_grad is strong which might mean that including these variables in the model could lead to skewed estimation and high std error. The models that I created did not contain both variables for this reason. 
+
+## Part d
+```{r}
+reg = regsubsets(`life_exp` ~ log_population + income + illiteracy + murder + 
+                 `hs_grad` + frost + log_area, data = states)
+rs = summary(reg)
+
+par(mfrow=c(1,2))
+plot(2:8, rs$cp, xlab = "No of parameters", ylab = "Cp Statistic")
+abline(0,1)
+
+plot(2:8, rs$adjr2, xlab = "No of parameters", ylab = "Adj R2")
+
+par(mfrow = c(1,1))
+
+cp_model = leaps(x = state.x77[,c(1:3, 5:8)], y = state.x77[,4], nbest = 1, method = "Cp")
+colnames(state.x77[,c(1:3, 5:8)])[which(cp_model$which[4,])]
+
+adjr2_model = leaps(x = state.x77[,c(1:3, 5:8)], y = state.x77[,4], nbest = 1, method = "adjr2")
+colnames(state.x77[,c(1:3, 5:8)])[which(adjr2_model$which[4,])]
+
+
+vec_aic = vector()
+
+for(i in 1:7){
+  temp_states = 
+    states |> 
+    select(-`life_exp`) |> 
+    select(which(rs$which[i,-1]))
+  
+  temp_states = 
+    temp_states |> 
+    bind_cols(states |> select(`life_exp`))
+  
+  fit = lm(`life_exp` ~ . , data = temp_states)
+  vec_aic = c(vec_aic, AIC(fit))
+}
+
+df_results_aic =
+  data.frame(
+    num_parameters = 2:8,
+    AIC = vec_aic
+  )
+
+df_results_aic |> 
+  gt() |> 
+  fmt_number(
+    columns = AIC,
+    decimals = 2
+  ) |> 
+  tab_style(
+    style = list(
+      cell_fill(color = "lightcyan"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(
+      columns = AIC,
+      rows = which(AIC == min(AIC))
+    )
+  )
+```
+
+## Part e
+```{r}
+set.seed(222)
+
+lambda_seq = 10^seq(-3, 0, by = .1)
+
+predictors_states =
+  states |> 
+  select(log_population, income, illiteracy, murder, 
+         `hs_grad`, frost, log_area) |> 
+  as.matrix()
+
+response_states =
+  states |> 
+  select(`life_exp`) |> 
+  as.matrix()
+
+cv_lasso_fit = glmnet::cv.glmnet(x = predictors_states, 
+                                  y = response_states, 
+                                  lambda = lambda_seq, 
+                                  nfolds = 5)
+cv_lasso_fit 
+
+lasso_fit = glmnet::glmnet(x = predictors_states, 
+                            y = response_states,
+                            lambda = cv_lasso_fit$lambda.min)
+coef(lasso_fit)
+```
+
+## Part f
+```{r}
+final_model = lm(`life_exp` ~ murder + `hs_grad` + 
+     log_population + frost, data = states)
+
+summary(final_model)
+```
+
+$$
+\widehat{\textrm{Life Exp}} = 68.7 - 0.29 \cdot \textrm{Murder} + 0.05 \cdot \textrm{HS Grad} + 0.25 \cdot \log \left(\textrm{Population}\right) - 0.005 \cdot \textrm{Frost}
+$$
+```{r}
+# 10-fold cv
+set.seed(222)
+
+train = trainControl(method = "cv", number = 10)
+
+model_caret = train(`life_exp` ~ murder + `hs_grad` + log_population + frost,
+                   data = states,
+                   trControl = train,
+                   method = 'lm',
+                   na.action = na.pass)
+
+model_caret
+
+model_caret$resample
+```
+

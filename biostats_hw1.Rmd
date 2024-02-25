@@ -1,0 +1,41 @@
+---
+title: "biostats_hw1"
+output: github_document
+date: "2023-09-18"
+---
+
+In a study of 133 individuals with a recent bike crash history, depression scores were measured
+using a standardized test. The depression scores for 14 of these individuals are as follows:
+45, 39, 25, 47, 49, 5, 70, 99, 74, 37, 99, 35, 8, 59
+a) Compute the following descriptive summaries of these data: mean, median, range, SD.
+b) Describe the box plot and the underlying distribution of the data. Use some of the
+following terms: left-skewed, right-skewed, symmetric, bimodal, unimodal distribution.
+Additionally, 140 individuals with a recent car crash history also participated in the study.
+The depression scores for 13 of these individuals are given below:
+67, 50, 85, 43, 64, 35, 47, 97, 58, 58, 10, 56, 50
+a) Using R, make a side-by-side box plot of the depression scores stratified by type of
+accident. Make sure you label your figure appropriately.
+b) Describe each of the box plots and the underlying distribution of the data. Use some of
+the following terms: left-skewed, right-skewed, symmetric, bimodal, unimodal distribu-
+tion.
+c) Comparing the 2 box plots, which group appears to have a lower typical depression score?
+
+
+```{r}
+library(tidyverse)
+
+bike_accident = data.frame(individual = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 
+                                          13, 14),
+                           dep_score_bike = c(45, 39, 25, 47, 49, 5, 70, 99, 74, 37, 99, 35, 8, 59))
+
+car_accident = data.frame(individual = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13),
+  dep_score_car = c(67, 50, 85, 43, 64, 35, 47, 97, 58, 58, 10, 56, 50))
+
+ggplot(bike_accident) + geom_boxplot(aes(y = dep_score_bike))
+ggplot(car_accident) + geom_boxplot(aes(y = dep_score_car))
+
+#below shows how to make the boxplot using base R
+#boxplot(bike_accident$dep_score_bike)
+#boxplot(car_accident$dep_score_car)
+
+```
